@@ -30,22 +30,6 @@ func a3(ctx context.Context) {
 	defer sp.Finish()
 	time.Sleep(time.Second * 1)
 }
-func b(ctx context.Context) {
-	sp, _ := costrace.StartSpanFromContext(ctx, "b")
-	defer sp.Finish()
-	time.Sleep(time.Millisecond * 20)
-	b1()
-	b2()
-}
-func b1() {
-	time.Sleep(time.Millisecond * 60)
-}
-func b2() {
-	time.Sleep(time.Millisecond * 70)
-}
-func c() {
-	time.Sleep(time.Millisecond * 30)
-}
 
 func TestParallel(t *testing.T) {
 	sp, ctx := costrace.StartSpanFromContext(context.Background(), "trace the function")
@@ -54,30 +38,28 @@ func TestParallel(t *testing.T) {
 	}()
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 
+	psp, pctx := costrace.ParallelCtx(ctx)
 	go func() {
 		defer wg.Done()
-		sp1, _ := costrace.StartSpanFromContext(ctx, "func1")
+		sp1, _ := costrace.StartSpanFromContext(pctx, "func1")
 		defer sp1.Finish()
 		time.Sleep(time.Second)
 	}()
 
 	go func() {
 		defer wg.Done()
-		sp1, _ := costrace.StartSpanFromContext(ctx, "func2")
+		sp1, _ := costrace.StartSpanFromContext(pctx, "func2")
 		defer sp1.Finish()
-		time.Sleep(time.Second)
-	}()
-
-	go func() {
-		defer wg.Done()
-		// nest
-		sp3, _ := costrace.StartSpanFromContext(ctx, "nest-func1")
-		defer sp3.Finish()
 		time.Sleep(time.Second)
 	}()
 	wg.Wait()
+	psp.Finish()
+	// nest
+	sp3, _ := costrace.StartSpanFromContext(ctx, "nest-func1")
+	defer sp3.Finish()
+	time.Sleep(time.Second)
 }
 
 func TestSegmentTrace(t *testing.T) {

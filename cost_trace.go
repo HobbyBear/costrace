@@ -3,6 +3,7 @@ package costrace
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -33,6 +34,18 @@ func StartSpan(title string) (*Span, context.Context) {
 	return this, context.WithValue(context.Background(), key, this)
 }
 
+func ParallelCtx(ctx context.Context) (*Span, context.Context) {
+	this := &Span{title: "[parallel]", startTime: time.Now()}
+	father, ok := ctx.Value(key).(*Span)
+	if !ok {
+		return this, context.WithValue(ctx, key, this)
+	}
+	father.lock.Lock()
+	father.child = append(father.child, this)
+	father.lock.Unlock()
+	return this, context.WithValue(ctx, key, this)
+}
+
 func StartSpanFromContext(ctx context.Context, title string) (*Span, context.Context) {
 	this := &Span{title: title, startTime: time.Now()}
 	father, ok := ctx.Value(key).(*Span)
@@ -53,7 +66,8 @@ func (s *Span) Finish() {
 
 func (s *Span) FinishWithPrint() {
 	s.endTime = time.Now()
-	s.Print()
+	//s.Print()
+	fmt.Println(s)
 }
 
 func (s *Span) Print() {
